@@ -10,7 +10,7 @@ import browser_cookie3
 from loguru import logger
 from requests import utils
 from selenium import webdriver
-from selenium.common import NoSuchElementException, TimeoutException
+from selenium.common import NoSuchElementException, TimeoutException, UnknownMethodException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
@@ -46,8 +46,13 @@ selected_role_id: int = 8916
 
 
 def get_cookie_as_dict(domain_name: str) -> dict:
-    cj = browser_cookie3.chrome(domain_name=domain_name)
-    return utils.dict_from_cookiejar(cj)
+    try:
+        cj = browser_cookie3.chrome(domain_name=domain_name)
+        return utils.dict_from_cookiejar(cj)
+    except RuntimeError:
+        logger.error("获取登录信息失败")
+        exit2(0)
+
 
 
 def set_cookie():
