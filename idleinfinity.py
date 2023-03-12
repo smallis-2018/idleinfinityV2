@@ -10,7 +10,7 @@ import browser_cookie3
 from loguru import logger
 from requests import utils
 from selenium import webdriver
-from selenium.common import NoSuchElementException, TimeoutException, UnknownMethodException
+from selenium.common import NoSuchElementException, TimeoutException, UnknownMethodException, WebDriverException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
@@ -25,8 +25,13 @@ options.add_experimental_option("excludeSwitches", ['enable-automation', 'enable
 options.add_argument('--headless')
 
 service = ChromeService(executable_path=ChromeDriverManager().install())
+driver = None
 
-driver = webdriver.Chrome(service=service, options=options)
+try:
+    driver = webdriver.Chrome(service=service, options=options)
+except WebDriverException:
+    logger.error("初始化Chrome失败")
+    exit(1)
 
 driver.implicitly_wait(2)
 driver.set_window_size(1920, 1080)
