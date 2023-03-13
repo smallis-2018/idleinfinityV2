@@ -1,6 +1,7 @@
 import argparse
 import builtins
 import re
+import signal
 import sys
 import time
 from random import uniform
@@ -10,7 +11,8 @@ import browser_cookie3
 from loguru import logger
 from requests import utils
 from selenium import webdriver
-from selenium.common import NoSuchElementException, TimeoutException, UnknownMethodException, WebDriverException
+from selenium.common import NoSuchElementException, TimeoutException, UnknownMethodException, WebDriverException, \
+    ElementClickInterceptedException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
@@ -56,8 +58,7 @@ def get_cookie_as_dict(domain_name: str) -> dict:
         return utils.dict_from_cookiejar(cj)
     except RuntimeError:
         logger.error("获取登录信息失败")
-        exit2(0)
-
+        exit2(1)
 
 
 def set_cookie():
@@ -140,7 +141,10 @@ def move(regions: set[str]):
     for region in regions:
         # 方法一：点击区域进入
         # 方法二：请求该区域，但会引起服务端报错。可能会被检测。
-        find_region_by_id(region).click()
+        try:
+            find_region_by_id(region).click()
+        except ElementClickInterceptedException:
+            pass
         logger.info("移动到未知区域，id:{0}", region)
         already_moved_region.add(region)
 
@@ -207,10 +211,22 @@ def check_login() -> bool:
     return True
 
 
-def exit2(code):
-    driver.quit()
-    builtins.exit(code)
+def get_san() -> str:
+    return driver.find_element(By.XPATH, '//*[normalize-space(text())="SAN："]/child::span[1]').text
 
+
+def exit2(code):
+    try:
+        sys.exit(code)
+    except SystemExit:
+        pass
+    finally:
+        driver.quit()
+        service.stop()
+
+
+signal.signal(signal.SIGINT, exit2)
+signal.signal(signal.SIGTERM, exit2)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -222,6 +238,9 @@ if __name__ == '__main__':
     driver.get('https://www.idleinfinity.cn/Home/Index')
     set_cookie()
 
+    if not check_login():
+        exit2(1)
+
     # 获取角色列表
     roles = get_role_list()
     for role_id, role_name in roles.items():
@@ -231,7 +250,7 @@ if __name__ == '__main__':
         pick_id = int(pick_id)
     except ValueError:
         logger.error("输入错误，请重试")
-        exit2(0)
+        exit2(1)
 
     if roles[str(pick_id)] is None:
         logger.error("没找到角色，爬")
@@ -239,10 +258,16 @@ if __name__ == '__main__':
         selected_role_id = pick_id
 
     if not back_to_map():
-        exit2(0)
+        exit2(1)
 
     while True:
         r = find_unready_region()
+        san = get_san()
+        logger.info('当前SAN值：{0}', san)
+
+        if int(san) <= 0:
+            exit2(0)
+
         if len(r) <= 0:
             logger.info("当前地图无可搜索区域")
             monster_id_set = check_monster()
@@ -253,6 +278,6 @@ if __name__ == '__main__':
                 move(monster_id_set)
             else:
                 if not reset():
-                    exit2(0)
+                    exit2(1)
         else:
             move(r)
