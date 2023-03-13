@@ -1,18 +1,16 @@
 import argparse
-import builtins
 import re
 import signal
 import sys
 import time
 from random import uniform
-from typing import Set, overload
+from typing import Set
 
 import browser_cookie3
 from loguru import logger
 from requests import utils
 from selenium import webdriver
-from selenium.common import NoSuchElementException, TimeoutException, UnknownMethodException, WebDriverException, \
-    ElementClickInterceptedException
+from selenium.common import NoSuchElementException, TimeoutException, WebDriverException, ElementClickInterceptedException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
@@ -42,8 +40,8 @@ driver.set_window_size(1920, 1080)
 
 # 设置Log
 logger.remove()
-log_level = "INFO"
-handler_id = logger.add(sys.stderr, level=log_level)
+def set_log_level(lv = "INFO"):
+    logger.add(sys.stderr, level=lv)
 
 # 一些全局变量
 # 已经探索过的区域
@@ -233,7 +231,7 @@ if __name__ == '__main__':
     parser.add_argument('--log_level', type=str, default="INFO", help="Out log level")
     args = parser.parse_args()
 
-    log_level = args.log_level
+    set_log_level(lv=args.log_level)
 
     driver.get('https://www.idleinfinity.cn/Home/Index')
     set_cookie()
